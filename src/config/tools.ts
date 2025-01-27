@@ -23,9 +23,11 @@ export const tools = [
 export const toolImplementations = {
   get_weather: async (params: any) => {
     return {
-      temperature: 22,
-      condition: "晴天",
-      forecast: "未来两小时内天气晴朗",
+      temperature: -9,
+      precipitationProbability: "0%",
+      humidity: "27%",
+      windSpeed: "10 公里/时",
+      condition: "晴朗",
     };
   },
 };

@@ -11,6 +11,16 @@ import { log } from "console";
 export class OpenAIAdapter implements LLMAdapter {
   convertToProviderFormat(messages: UnifiedMessage[]): any[] {
     return messages.map((msg) => {
+      // 处理工具结果消息
+      if (msg.role === "tool" && msg.content[0]?.type === "tool_result") {
+        return {
+          role: "tool",
+          tool_call_id: msg.content[0].toolUseId,
+          content: (msg.content[0].content[0] as any).text,
+        };
+      }
+
+      // 处理其他类型的消息
       const formattedMessage: any = {
         role: msg.role,
         content: msg.content
