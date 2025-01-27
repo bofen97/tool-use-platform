@@ -1,9 +1,7 @@
 "use client";
-// src/components/Chat.tsx
 import { useState, useEffect, useRef } from "react";
 import { MessageService } from "../services/MessageService";
 import { OpenAIAdapter } from "../adapters/OpenAIAdapter";
-import { StreamEvent } from "../types/stream";
 
 const API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
 
@@ -14,8 +12,7 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageService = useRef<MessageService>();
-  const currentAssistantMessage = useRef<string>("");
+  const messageService = useRef<MessageService>(null);
 
   useEffect(() => {
     messageService.current = new MessageService(new OpenAIAdapter(), API_KEY);
@@ -29,76 +26,43 @@ export default function Chat() {
     setInput("");
     setIsLoading(true);
 
-    // 添加用户消息
+    // Add user message
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
 
-    // 预先添加一个空的 assistant 消息
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
     try {
+      let currentAssistantMessage = "";
+
+      // Create a new message ID for this conversation turn
+      const messageId = Date.now().toString();
+
+      // Add initial assistant message
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
       const stream = messageService.current!.streamChat(userMessage);
 
       for await (const event of stream) {
-        switch (event.type) {
-          case "text_delta":
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              // 更新最后一条 assistant 消息
-              const lastMsg = newMessages[newMessages.length - 1];
-              if (lastMsg && lastMsg.role === "assistant") {
-                lastMsg.content += event.payload.text;
-              }
-              return newMessages;
-            });
-            break;
+        if (event.type === "text_delta") {
+          currentAssistantMessage += event.payload.text;
 
-          case "tool_call_start":
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: "system",
-                content: `调用工具: ${event.payload.toolName}`,
-              },
-            ]);
-            // 添加新的空 assistant 消息为后续响应做准备
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant", content: "" },
-            ]);
-            break;
-
-          case "tool_call_complete":
-            if (event.payload.error) {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  role: "system",
-                  content: `工具调用失败: ${event.payload.error}`,
-                },
-              ]);
-            } else {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  role: "system",
-                  content: `工具调用结果: ${JSON.stringify(
-                    event.payload.result,
-                    null,
-                    2
-                  )}`,
-                },
-              ]);
+          // Update the last message with the accumulated content
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            const lastMessage = newMessages[newMessages.length - 1];
+            if (lastMessage && lastMessage.role === "assistant") {
+              lastMessage.content = currentAssistantMessage;
             }
-            break;
+            return newMessages;
+          });
         }
       }
     } catch (error) {
       console.error("Chat error:", error);
+      // Add error message to the chat
       setMessages((prev) => [
         ...prev,
         {
           role: "system",
-          content: `Error: ${error.message}`,
+          content: "An error occurred while processing your message.",
         },
       ]);
     } finally {
@@ -106,7 +70,6 @@ export default function Chat() {
     }
   };
 
-  // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);

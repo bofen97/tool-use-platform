@@ -76,12 +76,10 @@ export class MessageService {
           : await this.apiService.createAnthropicStream(providerMessages);
 
       for await (const chunk of this.parseStream(stream)) {
-        console.log("Received chunk:", chunk);
-
         const events = processor.processChunk(chunk);
-        console.log("Processed events:", events);
 
         for (const event of events) {
+          console.log("event", event); //这儿yield出去的数量是正确的
           yield event;
         }
       }
@@ -90,12 +88,9 @@ export class MessageService {
       console.log("Completed message:", completedMessage);
 
       this.messages.push(completedMessage);
-
+      //here
       if (toolCalls.length > 0) {
         for (const toolCall of toolCalls) {
-          console.log("Processing tool call:", toolCall);
-          yield { type: "tool_call_start", payload: toolCall };
-
           try {
             const result = await this.apiService.executeTool(
               toolCall.toolName,
@@ -114,31 +109,13 @@ export class MessageService {
             };
 
             this.messages.push(toolResultMessage);
-            yield {
-              type: "tool_call_complete",
-              payload: {
-                callId: toolCall.callId,
-                result,
-              },
-            };
           } catch (error) {
             console.error("Tool execution error:", error);
-            yield {
-              type: "tool_call_complete",
-              payload: {
-                callId: toolCall.callId,
-                error: error.message,
-              },
-            };
           }
         }
       }
     } catch (error) {
       console.error("Stream processing error:", error);
-      yield {
-        type: "message_complete",
-        payload: { error: error.message },
-      };
     }
   }
 

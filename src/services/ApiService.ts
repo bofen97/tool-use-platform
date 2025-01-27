@@ -11,8 +11,6 @@ export class ApiService {
   }
 
   async createOpenAIStream(messages: any[]) {
-    console.log("messages");
-    console.log(messages);
     const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers: {
@@ -26,8 +24,6 @@ export class ApiService {
         tools: tools,
       }),
     });
-    console.log("response");
-    console.log(response);
 
     if (!response.ok) {
       const error = await response.json().catch(() => null);
