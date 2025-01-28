@@ -18,6 +18,10 @@ export class MessageService {
     this.adapter = adapter;
     this.apiService = new ApiService(apiKey, baseUrl);
   }
+  private getToolResultRole(): "tool" | "user" {
+    // OpenAI 使用 "tool"，Anthropic 使用 "user"
+    return this.adapter instanceof OpenAIAdapter ? "tool" : "user";
+  }
 
   private async *parseStream(stream: ReadableStream): AsyncGenerator<any> {
     const reader = stream.getReader();
@@ -28,9 +32,7 @@ export class MessageService {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
-
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
@@ -38,6 +40,18 @@ export class MessageService {
           if (line.trim() === "" || line.trim() === "data: [DONE]") continue;
 
           try {
+            // Handle format 1: event + data structure
+            if (line.startsWith("event: ")) {
+              const nextLine = lines[lines.indexOf(line) + 1];
+              if (nextLine?.startsWith("data: ")) {
+                const jsonStr = nextLine.slice(6);
+                const json = JSON.parse(jsonStr);
+                yield { event: line.slice(7), data: json };
+                continue;
+              }
+            }
+
+            // Handle format 2: data-only structure
             if (line.startsWith("data: ")) {
               const jsonStr = line.slice(6);
               const json = JSON.parse(jsonStr);
@@ -52,7 +66,6 @@ export class MessageService {
       reader.releaseLock();
     }
   }
-
   /**
    * 处理单次对话流，返回处理后的消息和工具调用
    */
@@ -129,7 +142,7 @@ export class MessageService {
           // 添加工具调用结果到消息历史
           //
           const toolResultMessage: UnifiedMessage = {
-            role: "tool",
+            role: this.getToolResultRole(), //user for anthropic , tool for openai <--here
             content: [
               {
                 type: "tool_result",

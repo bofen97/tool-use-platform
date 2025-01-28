@@ -1,5 +1,5 @@
 // src/services/ApiService.ts
-import { tools, toolImplementations } from "../config/tools";
+import { tools, claudeTools, toolImplementations } from "../config/tools";
 
 export class ApiService {
   private apiKey: string;
@@ -44,12 +44,14 @@ export class ApiService {
         "Content-Type": "application/json",
         "x-api-key": this.apiKey,
         "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
-        model: "claude-3-opus-20240229",
+        model: "claude-3-5-sonnet-20241022",
         messages,
         stream: true,
-        tools: tools,
+        tools: claudeTools,
+        max_tokens: 1024,
       }),
     });
 

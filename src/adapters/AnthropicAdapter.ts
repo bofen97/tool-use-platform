@@ -1,145 +1,213 @@
-// // src/adapters/AnthropicAdapter.ts
-// import { LLMAdapter, StreamProcessor } from "./base";
-// import { StreamEvent } from "../types/stream";
-// import {
-//   UnifiedToolCall,
-//   UnifiedMessage,
-//   UnifiedContent,
-// } from "../types/message";
+// src/adapters/AnthropicAdapter.ts
+import { LLMAdapter, StreamProcessor } from "./base";
+import { StreamEvent } from "../types/stream";
+import {
+  UnifiedToolCall,
+  UnifiedMessage,
+  UnifiedContent,
+} from "../types/message";
 
-// export class AnthropicAdapter implements LLMAdapter {
-//   convertToProviderFormat(messages: UnifiedMessage[]): any[] {
-//     return messages.map((msg) => ({
-//       role: msg.role,
-//       content: msg.content
-//         .map((c) => {
-//           switch (c.type) {
-//             case "text":
-//               return { type: "text", text: c.text };
-//             case "image":
-//               return {
-//                 type: "image",
-//                 source: {
-//                   type: "base64",
-//                   media_type: c.mediaType,
-//                   data: c.data,
-//                 },
-//               };
-//             case "tool_use":
-//               return {
-//                 type: "tool_use",
-//                 id: c.id,
-//                 name: c.name,
-//                 input: c.input,
-//               };
-//             default:
-//               return null;
-//           }
-//         })
-//         .filter(Boolean),
-//     }));
-//   }
+export class AnthropicAdapter implements LLMAdapter {
+  convertToProviderFormat(messages: UnifiedMessage[]): any[] {
+    return messages.map((msg) => {
+      // 创建基本内容数组
+      const baseContent = msg.content
+        .map((c) => {
+          switch (c.type) {
+            case "text":
+              return { type: "text", text: c.text };
+            case "image":
+              return {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: c.mediaType,
+                  data: c.data,
+                },
+              };
+            case "tool_use":
+              return {
+                type: "tool_use",
+                id: c.id,
+                name: c.name,
+                input: c.input,
+              };
+            case "tool_result":
+              return {
+                type: "tool_result",
+                tool_use_id: c.toolUseId,
+                content: c.content,
+              };
+            default:
+              return null;
+          }
+        })
+        .filter(Boolean);
 
-//   convertFromProviderFormat(response: any): UnifiedMessage {
-//     const content: UnifiedContent[] = [];
-//     const toolCalls: UnifiedToolCall[] = [];
+      // 如果存在 toolCalls，将其转换为 tool_use 类型并添加到 content 末尾
+      const toolCallsContent =
+        msg.toolCalls?.map((toolCall) => ({
+          type: "tool_use" as const,
+          id: toolCall.callId,
+          name: toolCall.toolName,
+          input: toolCall.parameters,
+        })) || [];
 
-//     for (const c of response.content) {
-//       switch (c.type) {
-//         case "text":
-//           content.push({ type: "text", text: c.text });
-//           break;
-//         case "tool_use":
-//           content.push({
-//             type: "tool_use",
-//             id: c.id,
-//             name: c.name,
-//             input: c.input,
-//           });
-//           toolCalls.push({
-//             callId: c.id,
-//             toolName: c.name,
-//             parameters: c.input,
-//           });
-//           break;
-//       }
-//     }
+      return {
+        role: msg.role,
+        content: [...baseContent, ...toolCallsContent],
+      };
+    });
+  }
 
-//     return {
-//       role: response.role,
-//       content,
-//       toolCalls: toolCalls.length ? toolCalls : undefined,
-//     };
-//   }
+  convertFromProviderFormat(response: any): UnifiedMessage {
+    const content: UnifiedContent[] = [];
+    const toolCalls: UnifiedToolCall[] = [];
 
-//   createStreamProcessor(): StreamProcessor {
-//     let currentMessage: UnifiedMessage = {
-//       role: "assistant",
-//       content: [],
-//     };
+    for (const c of response.content) {
+      switch (c.type) {
+        case "text":
+          content.push({ type: "text", text: c.text });
+          break;
+        case "tool_use":
+          content.push({
+            type: "tool_use",
+            id: c.id,
+            name: c.name,
+            input: c.input,
+          });
+          toolCalls.push({
+            callId: c.id,
+            toolName: c.name,
+            parameters: c.input,
+          });
+          break;
+      }
+    }
 
-//     let currentToolCalls: Map<string, UnifiedToolCall> = new Map();
-//     let jsonBuffer: string = "";
+    return {
+      role: response.role,
+      content,
+      toolCalls: toolCalls.length ? toolCalls : undefined,
+    };
+  }
 
-//     return {
-//       processChunk(chunk: any): StreamEvent[] {
-//         const events: StreamEvent[] = [];
-//         const event = JSON.parse(chunk.data);
+  createStreamProcessor(): StreamProcessor {
+    let currentMessage: UnifiedMessage = {
+      role: "assistant",
+      content: [],
+    };
 
-//         switch (event.type) {
-//           case "message_start":
-//             events.push({
-//               type: "message_start",
-//               payload: { id: event.message.id },
-//             });
-//             break;
+    let currentToolCalls: Map<string, UnifiedToolCall> = new Map();
+    let jsonBuffer: string = "";
+    let currentToolCall: UnifiedToolCall | null = null;
+    let currentContentIndex: number | null = null;
 
-//           case "content_block_delta":
-//             if (event.delta.type === "text_delta") {
-//               events.push({
-//                 type: "text_delta",
-//                 payload: { text: event.delta.text },
-//               });
+    return {
+      processChunk(chunk: any): StreamEvent[] {
+        const events: StreamEvent[] = [];
 
-//               if (
-//                 !currentMessage.content.length ||
-//                 currentMessage.content[0].type !== "text"
-//               ) {
-//                 currentMessage.content.push({ type: "text", text: "" });
-//               }
-//               (currentMessage.content[0] as any).text += event.delta.text;
-//             } else if (event.delta.type === "tool_use") {
-//               jsonBuffer += event.delta.input || "";
-//               try {
-//                 const input = JSON.parse(jsonBuffer);
-//                 const toolCall: UnifiedToolCall = {
-//                   callId: event.id,
-//                   toolName: event.name,
-//                   parameters: input,
-//                 };
-//                 currentToolCalls.set(event.id, toolCall);
-//                 events.push({
-//                   type: "tool_call_complete",
-//                   payload: toolCall,
-//                 });
-//                 jsonBuffer = "";
-//               } catch {
-//                 // 继续累积JSON
-//               }
-//             }
-//             break;
-//         }
+        // Handle message_start event
+        if (chunk.event === "message_start") {
+          const messageData = chunk.data?.message;
+          if (messageData) {
+            currentMessage.role = messageData.role;
+          }
+        }
 
-//         return events;
-//       },
+        // Handle content_block_start event
+        if (chunk.event === "content_block_start") {
+          const blockData = chunk.data?.content_block;
+          currentContentIndex = chunk.data?.index;
 
-//       finalize() {
-//         currentMessage.toolCalls = Array.from(currentToolCalls.values());
-//         return {
-//           completedMessage: currentMessage,
-//           toolCalls: currentMessage.toolCalls || [],
-//         };
-//       },
-//     };
-//   }
-// }
+          if (blockData?.type === "text") {
+            // Initialize text content block
+            currentMessage.content.push({
+              type: "text",
+              text: "",
+            });
+          } else if (blockData?.type === "tool_use") {
+            currentToolCall = {
+              callId: blockData.id,
+              toolName: blockData.name,
+              parameters: {},
+            };
+            currentToolCalls.set(blockData.id, currentToolCall);
+
+            events.push({
+              type: "tool_call_start",
+              payload: {
+                callId: blockData.id,
+                toolName: blockData.name,
+              },
+            });
+          }
+        }
+
+        // Handle content_block_delta event
+        if (chunk.event === "content_block_delta") {
+          const deltaData = chunk.data?.delta;
+          if (deltaData?.type === "text_delta") {
+            // Handle text delta
+            const text = deltaData.text;
+            if (
+              currentContentIndex !== null &&
+              currentMessage.content[currentContentIndex]
+            ) {
+              currentMessage.content[currentContentIndex].text += text;
+              events.push({
+                type: "text_delta",
+                payload: { text },
+              });
+            }
+          } else if (
+            deltaData?.type === "input_json_delta" &&
+            currentToolCall
+          ) {
+            // Handle tool call parameter delta
+            jsonBuffer += deltaData.partial_json;
+            console.log("jsonBuffer", jsonBuffer);
+            console.log("deltaData", deltaData.partial_json);
+            try {
+              const parsedParams = JSON.parse(jsonBuffer);
+              if (typeof parsedParams === "object") {
+                currentToolCall.parameters = parsedParams;
+                console.log("currentToolCall", currentToolCall);
+                events.push({
+                  type: "tool_call_delta",
+                  payload: {
+                    callId: currentToolCall.callId,
+                    parameters: parsedParams,
+                  },
+                });
+              }
+            } catch (e) {
+              // JSON is not complete yet, continue accumulating
+            }
+          }
+        }
+
+        // Handle content_block_stop event
+        if (chunk.event === "content_block_stop") {
+          if (currentToolCall) {
+            currentToolCall = null;
+            jsonBuffer = "";
+          }
+          currentContentIndex = null;
+        }
+
+        return events;
+      },
+
+      finalize() {
+        currentMessage.toolCalls = Array.from(currentToolCalls.values());
+        console.log("currentMessage", currentMessage);
+        console.log("currentToolCalls", currentToolCalls);
+        return {
+          completedMessage: currentMessage,
+          toolCalls: currentMessage.toolCalls || [],
+        };
+      },
+    };
+  }
+}
