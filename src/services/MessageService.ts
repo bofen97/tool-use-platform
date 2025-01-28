@@ -23,37 +23,6 @@ export class MessageService {
     return this.adapter instanceof OpenAIAdapter ? "tool" : "user";
   }
 
-  // private async *parseStream(stream: ReadableStream): AsyncGenerator<any> {
-  //   const reader = stream.getReader();
-  //   const decoder = new TextDecoder();
-  //   let buffer = "";
-
-  //   try {
-  //     while (true) {
-  //       const { done, value } = await reader.read();
-  //       if (done) break;
-  //       buffer += decoder.decode(value, { stream: true });
-  //       const lines = buffer.split("\n");
-  //       buffer = lines.pop() || "";
-
-  //       for (const line of lines) {
-  //         if (line.trim() === "" || line.trim() === "data: [DONE]") continue;
-
-  //         try {
-  //           if (line.startsWith("data: ")) {
-  //             const jsonStr = line.slice(6);
-  //             const json = JSON.parse(jsonStr);
-  //             yield json;
-  //           }
-  //         } catch (e) {
-  //           console.error("Failed to parse JSON:", line, e);
-  //         }
-  //       }
-  //     }
-  //   } finally {
-  //     reader.releaseLock();
-  //   }
-  // }
   private async *parseStream(stream: ReadableStream): AsyncGenerator<any> {
     const reader = stream.getReader();
     const decoder = new TextDecoder();
