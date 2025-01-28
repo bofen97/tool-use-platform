@@ -20,38 +20,18 @@ export const tools = [
   },
 ];
 export const claudeTools = [
-  // there is tool schema
   {
     name: "get_weather",
-    description: "获取指定位置的当前天气",
+    description: "Get the current weather in a given location",
     input_schema: {
       type: "object",
       properties: {
         location: {
           type: "string",
-          description: "城市和州，例如 San Francisco, CA",
-        },
-        unit: {
-          type: "string",
-          enum: ["celsius", "fahrenheit"],
-          description: "温度单位，'celsius' 或 'fahrenheit'",
+          description: "The city and state, e.g. San Francisco, CA",
         },
       },
-      required: ["location", "unit"],
-    },
-  },
-  {
-    name: "get_time",
-    description: "获取指定时区的当前时间",
-    input_schema: {
-      type: "object",
-      properties: {
-        timezone: {
-          type: "string",
-          description: "IANA 时区名称，例如 America/Los_Angeles",
-        },
-      },
-      required: ["timezone"],
+      required: ["location"],
     },
   },
 ];

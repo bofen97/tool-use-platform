@@ -9,9 +9,9 @@ import {
 
 export class AnthropicAdapter implements LLMAdapter {
   convertToProviderFormat(messages: UnifiedMessage[]): any[] {
-    return messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content
+    return messages.map((msg) => {
+      // 创建基本内容数组
+      const baseContent = msg.content
         .map((c) => {
           switch (c.type) {
             case "text":
@@ -32,12 +32,32 @@ export class AnthropicAdapter implements LLMAdapter {
                 name: c.name,
                 input: c.input,
               };
+            case "tool_result":
+              return {
+                type: "tool_result",
+                tool_use_id: c.toolUseId,
+                content: c.content,
+              };
             default:
               return null;
           }
         })
-        .filter(Boolean),
-    }));
+        .filter(Boolean);
+
+      // 如果存在 toolCalls，将其转换为 tool_use 类型并添加到 content 末尾
+      const toolCallsContent =
+        msg.toolCalls?.map((toolCall) => ({
+          type: "tool_use" as const,
+          id: toolCall.callId,
+          name: toolCall.toolName,
+          input: toolCall.parameters,
+        })) || [];
+
+      return {
+        role: msg.role,
+        content: [...baseContent, ...toolCallsContent],
+      };
+    });
   }
 
   convertFromProviderFormat(response: any): UnifiedMessage {
@@ -146,10 +166,7 @@ export class AnthropicAdapter implements LLMAdapter {
           ) {
             // Handle tool call parameter delta
             jsonBuffer += deltaData.partial_json;
-            //参数收集的不完整就所以从控制台来看 是空的{}.
-            // {"location
-            // "uni
-            // 然后就退出了。
+            console.log("jsonBuffer", jsonBuffer);
             console.log("deltaData", deltaData.partial_json);
             try {
               const parsedParams = JSON.parse(jsonBuffer);

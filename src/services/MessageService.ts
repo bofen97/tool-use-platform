@@ -169,7 +169,7 @@ export class MessageService {
           // 添加工具调用结果到消息历史
           //
           const toolResultMessage: UnifiedMessage = {
-            role: "tool",
+            role: "user", //user for anthropic , tool for openai
             content: [
               {
                 type: "tool_result",

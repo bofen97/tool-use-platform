@@ -51,7 +51,7 @@ export class ApiService {
         messages,
         stream: true,
         tools: claudeTools,
-        max_tokens: 4096,
+        max_tokens: 1024,
       }),
     });
 
