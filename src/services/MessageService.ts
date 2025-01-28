@@ -19,6 +19,37 @@ export class MessageService {
     this.apiService = new ApiService(apiKey, baseUrl);
   }
 
+  // private async *parseStream(stream: ReadableStream): AsyncGenerator<any> {
+  //   const reader = stream.getReader();
+  //   const decoder = new TextDecoder();
+  //   let buffer = "";
+
+  //   try {
+  //     while (true) {
+  //       const { done, value } = await reader.read();
+  //       if (done) break;
+  //       buffer += decoder.decode(value, { stream: true });
+  //       const lines = buffer.split("\n");
+  //       buffer = lines.pop() || "";
+
+  //       for (const line of lines) {
+  //         if (line.trim() === "" || line.trim() === "data: [DONE]") continue;
+
+  //         try {
+  //           if (line.startsWith("data: ")) {
+  //             const jsonStr = line.slice(6);
+  //             const json = JSON.parse(jsonStr);
+  //             yield json;
+  //           }
+  //         } catch (e) {
+  //           console.error("Failed to parse JSON:", line, e);
+  //         }
+  //       }
+  //     }
+  //   } finally {
+  //     reader.releaseLock();
+  //   }
+  // }
   private async *parseStream(stream: ReadableStream): AsyncGenerator<any> {
     const reader = stream.getReader();
     const decoder = new TextDecoder();
@@ -28,9 +59,7 @@ export class MessageService {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
-
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
@@ -38,6 +67,18 @@ export class MessageService {
           if (line.trim() === "" || line.trim() === "data: [DONE]") continue;
 
           try {
+            // Handle format 1: event + data structure
+            if (line.startsWith("event: ")) {
+              const nextLine = lines[lines.indexOf(line) + 1];
+              if (nextLine?.startsWith("data: ")) {
+                const jsonStr = nextLine.slice(6);
+                const json = JSON.parse(jsonStr);
+                yield { event: line.slice(7), data: json };
+                continue;
+              }
+            }
+
+            // Handle format 2: data-only structure
             if (line.startsWith("data: ")) {
               const jsonStr = line.slice(6);
               const json = JSON.parse(jsonStr);
@@ -52,7 +93,6 @@ export class MessageService {
       reader.releaseLock();
     }
   }
-
   /**
    * 处理单次对话流，返回处理后的消息和工具调用
    */

@@ -2,8 +2,11 @@
 import { useState, useEffect, useRef } from "react";
 import { MessageService } from "../services/MessageService";
 import { OpenAIAdapter } from "../adapters/OpenAIAdapter";
+import { AnthropicAdapter } from "../adapters/AnthropicAdapter";
+import { Switch } from "@headlessui/react";
 
-const API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
+const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "";
+const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
 
 export default function Chat() {
   const [messages, setMessages] = useState<
@@ -11,12 +14,16 @@ export default function Chat() {
   >([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [useOpenAI, setUseOpenAI] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageService = useRef<MessageService>(null);
 
   useEffect(() => {
-    messageService.current = new MessageService(new OpenAIAdapter(), API_KEY);
-  }, []);
+    messageService.current = new MessageService(
+      useOpenAI ? new OpenAIAdapter() : new AnthropicAdapter(),
+      useOpenAI ? OPENAI_API_KEY : ANTHROPIC_API_KEY
+    );
+  }, [useOpenAI]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,16 +33,11 @@ export default function Chat() {
     setInput("");
     setIsLoading(true);
 
-    // Add user message
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
 
     try {
       let currentAssistantMessage = "";
-
-      // Create a new message ID for this conversation turn
       const messageId = Date.now().toString();
-
-      // Add initial assistant message
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       const stream = messageService.current!.streamChat(userMessage);
@@ -44,7 +46,6 @@ export default function Chat() {
         if (event.type === "text_delta") {
           currentAssistantMessage += event.payload.text;
 
-          // Update the last message with the accumulated content
           setMessages((prev) => {
             const newMessages = [...prev];
             const lastMessage = newMessages[newMessages.length - 1];
@@ -57,7 +58,6 @@ export default function Chat() {
       }
     } catch (error) {
       console.error("Chat error:", error);
-      // Add error message to the chat
       setMessages((prev) => [
         ...prev,
         {
@@ -76,6 +76,34 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
+      <div className="bg-white p-4 shadow-sm">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-sm font-medium">Current Provider:</span>
+            <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100">
+              {useOpenAI ? "OpenAI" : "Anthropic"}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">Anthropic</span>
+            <Switch
+              checked={useOpenAI}
+              onChange={setUseOpenAI}
+              className={`${
+                useOpenAI ? "bg-blue-600" : "bg-gray-400"
+              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+            >
+              <span
+                className={`${
+                  useOpenAI ? "translate-x-6" : "translate-x-1"
+                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+              />
+            </Switch>
+            <span className="text-sm">OpenAI</span>
+          </div>
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((msg, idx) => (
