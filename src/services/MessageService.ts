@@ -18,6 +18,10 @@ export class MessageService {
     this.adapter = adapter;
     this.apiService = new ApiService(apiKey, baseUrl);
   }
+  private getToolResultRole(): "tool" | "user" {
+    // OpenAI 使用 "tool"，Anthropic 使用 "user"
+    return this.adapter instanceof OpenAIAdapter ? "tool" : "user";
+  }
 
   // private async *parseStream(stream: ReadableStream): AsyncGenerator<any> {
   //   const reader = stream.getReader();
@@ -169,7 +173,7 @@ export class MessageService {
           // 添加工具调用结果到消息历史
           //
           const toolResultMessage: UnifiedMessage = {
-            role: "user", //user for anthropic , tool for openai
+            role: this.getToolResultRole(), //user for anthropic , tool for openai <--here
             content: [
               {
                 type: "tool_result",
