@@ -4,6 +4,7 @@ import { MessageService } from "../services/MessageService";
 import { OpenAIAdapter } from "../adapters/OpenAIAdapter";
 import { AnthropicAdapter } from "../adapters/AnthropicAdapter";
 import { Switch } from "@headlessui/react";
+import { Send } from "lucide-react";
 
 const ANTHROPIC_API_KEY = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "";
 const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
@@ -75,74 +76,111 @@ export default function Chat() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      <div className="bg-white p-4 shadow-sm">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium">Current Provider:</span>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100">
-              {useOpenAI ? "OpenAI" : "Anthropic"}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm">Anthropic</span>
-            <Switch
-              checked={useOpenAI}
-              onChange={setUseOpenAI}
-              className={`${
-                useOpenAI ? "bg-blue-600" : "bg-gray-400"
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-            >
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <span className="text-sm font-medium text-gray-700">
+                Current Provider:
+              </span>
               <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  useOpenAI
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-purple-100 text-purple-800"
+                }`}
+              >
+                {useOpenAI ? "OpenAI" : "Anthropic"}
+              </span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <span
+                className={`text-sm ${
+                  !useOpenAI && "font-medium text-purple-800"
+                }`}
+              >
+                Anthropic
+              </span>
+              <Switch
+                checked={useOpenAI}
+                onChange={setUseOpenAI}
                 className={`${
-                  useOpenAI ? "translate-x-6" : "translate-x-1"
-                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-              />
-            </Switch>
-            <span className="text-sm">OpenAI</span>
+                  useOpenAI ? "bg-emerald-500" : "bg-purple-500"
+                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+              >
+                <span
+                  className={`${
+                    useOpenAI ? "translate-x-6" : "translate-x-1"
+                  } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                />
+              </Switch>
+              <span
+                className={`text-sm ${
+                  useOpenAI && "font-medium text-emerald-800"
+                }`}
+              >
+                OpenAI
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="max-w-3xl mx-auto space-y-4">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-5xl mx-auto space-y-4">
           {messages.map((msg, idx) => (
             <div
               key={`${msg.role}-${idx}`}
-              className={`p-4 rounded-lg ${
-                msg.role === "user"
-                  ? "bg-blue-500 text-white ml-auto"
-                  : msg.role === "system"
-                  ? "bg-gray-200 text-gray-800"
-                  : "bg-white text-gray-800"
-              } max-w-[80%] ${msg.role === "user" ? "ml-auto" : "mr-auto"}`}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
             >
-              {msg.content}
+              <div
+                className={`p-4 rounded-2xl max-w-[80%] shadow-sm ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : msg.role === "system"
+                    ? "bg-red-100 text-red-800 border border-red-200"
+                    : "bg-white text-gray-800 border border-gray-100"
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
             </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t bg-white p-4">
-        <div className="max-w-3xl mx-auto flex gap-4">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-          >
-            Send
-          </button>
-        </div>
-      </form>
+      {/* Input Area */}
+      <div className="border-t border-gray-200 bg-white p-4">
+        <form onSubmit={handleSubmit} className="max-w-5xl mx-auto">
+          <div className="flex items-center gap-4 bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-gray-300 transition-colors p-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1 px-2 py-2 bg-transparent focus:outline-none text-gray-800 placeholder-gray-400"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`p-2 rounded-xl ${
+                isLoading || !input.trim()
+                  ? "text-gray-400 bg-gray-100"
+                  : "text-white bg-blue-600 hover:bg-blue-700"
+              } transition-colors`}
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
