@@ -76,7 +76,7 @@ export class MessageService {
     StreamEvent,
     { completedMessage: UnifiedMessage; toolCalls: any[] }
   > {
-    for await (const chunk of this.parseStream(stream)) {
+    for await (const chunk of stream) {
       const events = processor.processChunk(chunk);
       for (const event of events) {
         yield event;
@@ -106,8 +106,8 @@ export class MessageService {
     console.log("providerMessages", providerMessages);
     const stream =
       this.adapter instanceof OpenAIAdapter
-        ? await this.apiService.createOpenAIStream(providerMessages)
-        : await this.apiService.createAnthropicStream(providerMessages);
+        ? await this.apiService.createOpenAIClientStream(providerMessages)
+        : await this.apiService.createAnthropicClientStream(providerMessages);
 
     // 修改这部分代码，使用 for await...of 来处理流
     let completedMessage: UnifiedMessage | undefined;
@@ -142,7 +142,7 @@ export class MessageService {
           // 添加工具调用结果到消息历史
           //
           const toolResultMessage: UnifiedMessage = {
-            role: this.getToolResultRole(), //user for anthropic , tool for openai <--here
+            role: this.getToolResultRole(), //user for anthropic , tool for openai
             content: [
               {
                 type: "tool_result",

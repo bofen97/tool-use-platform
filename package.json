@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.3",
     "@headlessui/react": "^2.2.0",
     "headlessui": "^0.0.0",
     "lucide-react": "^0.474.0",
