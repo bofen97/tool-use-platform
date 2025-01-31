@@ -9,10 +9,39 @@ export const tools = [
       parameters: {
         type: "object",
         properties: {
-          latitude: { type: "number" },
-          longitude: { type: "number" },
+          latitude: {
+            type: "number",
+            description: "The latitude of the location",
+          },
+          longitude: {
+            type: "number",
+            description: "The longitude of the location",
+          },
         },
         required: ["latitude", "longitude"],
+        additionalProperties: false,
+      },
+      strict: true,
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "write_content_to_file",
+      description: "Write a content to a file",
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The content to write to the file",
+          },
+          file_path: {
+            type: "string",
+            description: "The path to the file to write to",
+          },
+        },
+        required: ["content", "file_path"],
         additionalProperties: false,
       },
       strict: true,
@@ -34,6 +63,24 @@ export const claudeTools = [
       required: ["location"],
     },
   },
+  {
+    name: "write_content_to_file",
+    description: "Write a content to a file",
+    input_schema: {
+      type: "object",
+      properties: {
+        content: {
+          type: "string",
+          description: "The content to write to the file",
+        },
+        file_path: {
+          type: "string",
+          description: "The path to the file to write to",
+        },
+      },
+      required: ["content", "file_path"],
+    },
+  },
 ];
 // Mock tool implementations
 export const toolImplementations = {
@@ -44,6 +91,12 @@ export const toolImplementations = {
       humidity: "27%",
       windSpeed: "10 公里/时",
       condition: "晴朗",
+    };
+  },
+  write_content_to_file: async (params: any) => {
+    console.log("write_content_to_file", params);
+    return {
+      success: true,
     };
   },
 };

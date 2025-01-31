@@ -81,6 +81,7 @@ export class OpenAIAdapter implements LLMAdapter {
 
     return {
       processChunk(chunk: any): StreamEvent[] {
+        console.log("chunk", chunk);
         const events: StreamEvent[] = [];
         if (!chunk.choices?.[0]?.delta) return events;
 
@@ -91,6 +92,7 @@ export class OpenAIAdapter implements LLMAdapter {
         }
 
         if (delta?.content) {
+          //init content ,"".
           if (!currentMessage.content.length) {
             currentMessage.content.push({
               type: "text",
@@ -113,6 +115,7 @@ export class OpenAIAdapter implements LLMAdapter {
               currentToolCalls.set(currentToolCallId, {
                 callId: currentToolCallId,
                 toolName: toolCall.function?.name || "",
+                //init parameters,{}
                 parameters: {},
               });
               argumentsBuffer.set(currentToolCallId, "");

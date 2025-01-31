@@ -1,6 +1,7 @@
 // src/services/ApiService.ts
 import { tools, claudeTools, toolImplementations } from "../config/tools";
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 export class ApiService {
   private apiKey: string;
   private baseUrl: string;
@@ -35,6 +36,23 @@ export class ApiService {
     }
 
     return response.body;
+  }
+
+  async createOpenAIClientStream(messages: any[]) {
+    const openai = new OpenAI({
+      baseURL: "https://api.deepseek.com",
+      apiKey: this.apiKey,
+      dangerouslyAllowBrowser: true,
+    });
+
+    const stream = await openai.chat.completions.create({
+      messages,
+      model: "deepseek-chat",
+      tools: tools as OpenAI.Chat.ChatCompletionTool[],
+      stream: true,
+    });
+
+    return stream;
   }
 
   async createAnthropicStream(messages: any[]) {
