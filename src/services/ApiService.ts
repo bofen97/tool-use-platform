@@ -1,6 +1,6 @@
 // src/services/ApiService.ts
 import { tools, claudeTools, toolImplementations } from "../config/tools";
-
+import Anthropic from "@anthropic-ai/sdk";
 export class ApiService {
   private apiKey: string;
   private baseUrl: string;
@@ -60,6 +60,22 @@ export class ApiService {
     }
 
     return response.body;
+  }
+
+  async createAnthropicClientStream(messages: any[]) {
+    const anthropic = new Anthropic({
+      apiKey: this.apiKey,
+      dangerouslyAllowBrowser: true,
+    });
+
+    const stream = await anthropic.messages.stream({
+      model: "claude-3-5-sonnet-20241022",
+      messages: messages,
+      max_tokens: 1024,
+      tools: claudeTools as Anthropic.Tool[],
+    });
+
+    return stream;
   }
 
   async executeTool(toolName: string, parameters: any) {

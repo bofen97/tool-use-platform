@@ -76,7 +76,7 @@ export class MessageService {
     StreamEvent,
     { completedMessage: UnifiedMessage; toolCalls: any[] }
   > {
-    for await (const chunk of this.parseStream(stream)) {
+    for await (const chunk of stream) {
       const events = processor.processChunk(chunk);
       for (const event of events) {
         yield event;
@@ -107,7 +107,7 @@ export class MessageService {
     const stream =
       this.adapter instanceof OpenAIAdapter
         ? await this.apiService.createOpenAIStream(providerMessages)
-        : await this.apiService.createAnthropicStream(providerMessages);
+        : await this.apiService.createAnthropicClientStream(providerMessages);
 
     // 修改这部分代码，使用 for await...of 来处理流
     let completedMessage: UnifiedMessage | undefined;

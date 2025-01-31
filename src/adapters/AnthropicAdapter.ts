@@ -106,27 +106,27 @@ export class AnthropicAdapter implements LLMAdapter {
     return {
       processChunk(chunk: any): StreamEvent[] {
         const events: StreamEvent[] = [];
-
+        console.log("chunk", chunk);
         // Handle message_start event
-        if (chunk.event === "message_start") {
-          const messageData = chunk.data?.message;
+        if (chunk.type === "message_start") {
+          const messageData = chunk.message;
           if (messageData) {
             currentMessage.role = messageData.role;
           }
         }
 
         // Handle content_block_start event
-        if (chunk.event === "content_block_start") {
-          const blockData = chunk.data?.content_block;
-          currentContentIndex = chunk.data?.index;
+        if (chunk.type === "content_block_start") {
+          const blockData = chunk.content_block;
+          currentContentIndex = chunk.index;
 
-          if (blockData?.type === "text") {
+          if (blockData.type === "text") {
             // Initialize text content block
             currentMessage.content.push({
               type: "text",
               text: "",
             });
-          } else if (blockData?.type === "tool_use") {
+          } else if (blockData.type === "tool_use") {
             currentToolCall = {
               callId: blockData.id,
               toolName: blockData.name,
@@ -145,9 +145,9 @@ export class AnthropicAdapter implements LLMAdapter {
         }
 
         // Handle content_block_delta event
-        if (chunk.event === "content_block_delta") {
-          const deltaData = chunk.data?.delta;
-          if (deltaData?.type === "text_delta") {
+        if (chunk.type === "content_block_delta") {
+          const deltaData = chunk.delta;
+          if (deltaData.type === "text_delta") {
             // Handle text delta
             const text = deltaData.text;
             if (
@@ -160,10 +160,7 @@ export class AnthropicAdapter implements LLMAdapter {
                 payload: { text },
               });
             }
-          } else if (
-            deltaData?.type === "input_json_delta" &&
-            currentToolCall
-          ) {
+          } else if (deltaData.type === "input_json_delta" && currentToolCall) {
             // Handle tool call parameter delta
             jsonBuffer += deltaData.partial_json;
             console.log("jsonBuffer", jsonBuffer);
@@ -188,7 +185,7 @@ export class AnthropicAdapter implements LLMAdapter {
         }
 
         // Handle content_block_stop event
-        if (chunk.event === "content_block_stop") {
+        if (chunk.type === "content_block_stop") {
           if (currentToolCall) {
             currentToolCall = null;
             jsonBuffer = "";
